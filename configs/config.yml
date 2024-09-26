@@ -1,0 +1,46 @@
+redis:
+  sentinel_address: "0.0.0.0:26379,0.0.0.0:26380,0.0.0.0:26381"
+  db: 0
+  master_name: "mymaster"
+
+kafka:
+  brokers_url: "localhost:9092"
+  read_topic: ""
+  write_topic: ""
+  consumer_group: ""
+
+logger:
+  level: "development"
+
+server:
+  tcp:
+    host:
+    port: 8080
+  udp:
+    host:
+    port: 5000
+  http:
+    host:
+    port: 8001
+    metrics_path: "/metrics"
+    app_info_path: "/app_info"
+
+rabbit:
+  server:
+    host: "localhost"
+    port: 5672
+    user: "admin"
+    pass: "admin"
+  connection:
+    exchange_name: ""
+    exchange_type: "topic"
+    routing_key: ""
+    queue_name: ""
+    reconnect_delay_second: 5
+    prefetch_count: 1
+  dead_letter:
+    exchange_name: ""
+    routing_key: ""
+    ttl: 30
+  publisher:
+    content_type: "application/json"
