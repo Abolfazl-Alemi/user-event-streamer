@@ -16,16 +16,22 @@ func (st *Streamer) RunPipeline(wg *sync.WaitGroup) {
 		go func(data []byte) {
 			defer wg.Done()
 			var eData models.GA4Event
-			err := json.Unmarshal(event, &eData)
+			err := json.Unmarshal(data, &eData)
 			if err != nil {
-				logger.Zap.Error("cannot unmarshal the GA4 event data", zap.Error(err), zap.String("event", string(event)))
+				logger.Zap.Error("cannot unmarshal the GA4 event data", zap.Error(err), zap.String("event", string(data)))
 				st.pr.GaugeMetricIncr(map[string]string{constants.GaugeLabelType: constants.GaugeValueTypeEvent, constants.GaugeLabelStatus: constants.GaugeValueStatusInvalid})
+				if err := st.exceptionHandler.sendInvalidDataToKafka(data); err != nil {
+					logger.Zap.Error("cannot publish the invalid event into kafka", zap.Error(err), zap.String("event", string(data)), zap.String("operation", "exception_handler"))
+				}
 				return
 			}
 
 			err = st.kf.Publish(data)
 			if err != nil {
-				logger.Zap.Error("cannot publish the event into kafka", zap.Error(err), zap.String("event", string(event)))
+				logger.Zap.Error("cannot publish the event into kafka", zap.Error(err), zap.String("event", string(data)))
+				if err := st.exceptionHandler.sendUnpublishedDataToRabbit(data); err != nil {
+					logger.Zap.Error("cannot publish the exception event into rabbitMQ", zap.Error(err), zap.String("event", string(data)), zap.String("operation", "exception_handler"))
+				}
 			}
 			st.pr.GaugeMetricIncr(map[string]string{constants.GaugeLabelType: constants.GaugeValueTypeEvent, constants.GaugeLabelStatus: constants.GaugeValueStatusValid})
 		}(event)
