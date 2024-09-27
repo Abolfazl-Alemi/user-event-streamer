@@ -10,6 +10,8 @@ import (
 )
 
 func (st *Streamer) RunPipeline(wg *sync.WaitGroup) {
+	go st.exceptionHandler.tryProcessUnpublishedData(wg)
+
 	for event := range st.udp.UdpListenerChan {
 		st.pr.GaugeMetricIncr(map[string]string{constants.GaugeLabelType: constants.GaugeValueTypeEvent, constants.GaugeLabelStatus: constants.GaugeValueStatusTotal})
 		wg.Add(1)
@@ -21,7 +23,7 @@ func (st *Streamer) RunPipeline(wg *sync.WaitGroup) {
 				logger.Zap.Error("cannot unmarshal the GA4 event data", zap.Error(err), zap.String("event", string(data)))
 				st.pr.GaugeMetricIncr(map[string]string{constants.GaugeLabelType: constants.GaugeValueTypeEvent, constants.GaugeLabelStatus: constants.GaugeValueStatusInvalid})
 				if err := st.exceptionHandler.sendInvalidDataToKafka(data); err != nil {
-					logger.Zap.Error("cannot publish the invalid event into kafka", zap.Error(err), zap.String("event", string(data)), zap.String("operation", "exception_handler"))
+					logger.Zap.Error("cannot publish the invalid event into kafka", zap.Error(err), zap.String("operation", "exception_handler"))
 				}
 				return
 			}
@@ -30,7 +32,7 @@ func (st *Streamer) RunPipeline(wg *sync.WaitGroup) {
 			if err != nil {
 				logger.Zap.Error("cannot publish the event into kafka", zap.Error(err), zap.String("event", string(data)))
 				if err := st.exceptionHandler.sendUnpublishedDataToRabbit(data); err != nil {
-					logger.Zap.Error("cannot publish the exception event into rabbitMQ", zap.Error(err), zap.String("event", string(data)), zap.String("operation", "exception_handler"))
+					logger.Zap.Error("cannot publish the exception event into rabbitMQ", zap.Error(err), zap.String("operation", "exception_handler"))
 				}
 			}
 			st.pr.GaugeMetricIncr(map[string]string{constants.GaugeLabelType: constants.GaugeValueTypeEvent, constants.GaugeLabelStatus: constants.GaugeValueStatusValid})
